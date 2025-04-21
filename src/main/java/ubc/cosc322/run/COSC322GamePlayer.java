@@ -2,12 +2,9 @@ package ubc.cosc322.run;
 
 import java.util.*;
 
-import ubc.cosc322.actionutil.ActionFactory;
-import ubc.cosc322.actionutil.Action;
-import ubc.cosc322.mcts.MCTS_Manager;
-import ubc.cosc322.mcts.Node;
-
+import py4j.ClientServer;
 import sfs2x.client.entities.Room;
+import ubc.cosc322.mcts.MCTS_Manager;
 import ygraph.ai.smartfox.games.BaseGameGUI;
 import ygraph.ai.smartfox.games.GameClient;
 import ygraph.ai.smartfox.games.GameMessage;
@@ -15,9 +12,21 @@ import ygraph.ai.smartfox.games.GamePlayer;
 import ygraph.ai.smartfox.games.amazons.AmazonsGameMessage;
 
 public class COSC322GamePlayer extends GamePlayer {
+    private interface PythonMcts {
+        void setCurrentNode(int[][] boardState, int playerId);
+        void setThreads(int n);
+        void doRollout();
+        List<List<Integer>> makeMove();
+        boolean isOpponentMoveValid(List<Integer> qc,
+                                    List<Integer> qn,
+                                    List<Integer> ar);
+    }
 
 	private GameClient gameClient = null;
 	private BaseGameGUI gamegui = null;
+
+	private ClientServer pyServer;
+    private PythonMcts  pythonMcts;
 
 	private String userName = null;
 	private String passwd = null;
@@ -68,9 +77,11 @@ public class COSC322GamePlayer extends GamePlayer {
 	}
 
 	@Override
-	public void connect() {
-		gameClient = new GameClient(userName, passwd, this);
-	}
+    public void connect() {
+        gameClient = new GameClient(userName, passwd, this);
+        pyServer = new ClientServer((Object) null);
+		pythonMcts = (PythonMcts) pyServer.getPythonServerEntryPoint(new Class[]{PythonMcts.class});
+    }
 
 	@Override
 	public GameClient getGameClient() {
@@ -85,14 +96,6 @@ public class COSC322GamePlayer extends GamePlayer {
 	@SuppressWarnings("unchecked")
 	@Override
 	public boolean handleGameMessage(String messageType, Map<String, Object> msgDetails) {
-		// This method will be called by the GameClient when it receives a game-related
-		// message
-		// from the server.
-
-		// For a detailed description of the message types and format,
-		// see the method GamePlayer.handleGameMessage() in the game-client-api
-		// document.
-		//System.out.println("HELLO THIS IS YOUR MOM: "+messageType);
 		System.out.println("Message Type: "+messageType);
 
 		switch (messageType) {
@@ -106,67 +109,47 @@ public class COSC322GamePlayer extends GamePlayer {
 				}
 				break;
 
-			case GameMessage.GAME_ACTION_START:
+			    case GameMessage.GAME_ACTION_START:
+					setMyQueen((String) msgDetails.get(AmazonsGameMessage.PLAYER_BLACK));
+					pythonMcts.setCurrentNode(board, myQueen);
+					pythonMcts.setThreads(4);
 
-
-				@SuppressWarnings("unused")
-				String playingWhiteQueens = (String) msgDetails.get(AmazonsGameMessage.PLAYER_WHITE);
-				@SuppressWarnings("unused")
-				String playingBlackQueens = (String) msgDetails.get(AmazonsGameMessage.PLAYER_BLACK);
-				setMyQueen(playingBlackQueens);
-				MCTS_Manager.setCurrentNode(new Node(this.board, 2, null, null, null, 0));
-				MCTS_Manager.setThreads(4);
-
-				if (myQueen == 2) {
-
-					try
-					{
-						performRolloutsOnCurrentNodeFor30Seconds();
-					}
-					catch (InterruptedException e)
-					{
-						throw new RuntimeException(e);
-					}
-					makeADecision();
-					printArray();
-					updateGameBoardWithDecision();
-
-					}
-				break;
-
-			case GameMessage.GAME_ACTION_MOVE:
-
-				if (gamegui != null) {
-					gamegui.updateGameState(msgDetails);
-
-				}
-				if(!isOpponentMoveValid(msgDetails)) {
-					//this.getGameClient().sendMoveMessage(msgDetails);
-					System.out.println("Opponent has made an invalid move");
-				}
-				else {
-
-					if (MCTS_Manager.getNode().getTerminal() != 0) {
-						System.out.println("Our AI has lost!");
-						System.out.println("The winner is Queen" + MCTS_Manager.getNode().getTerminal());
-						gameClient.leaveCurrentRoom();
-						gameClient.logout();
-
-
-					} else {
+					if (myQueen == 2) {
+						RolloutThread thinker = new RolloutThread();
+						thinker.start();
 						try {
-							System.out.println("AI will now make its move!");
-							performRolloutsOnCurrentNodeFor30Seconds();
+							Thread.sleep(27000);
 						} catch (InterruptedException e) {
-							throw new RuntimeException(e);
+							Thread.currentThread().interrupt();
 						}
-						makeADecision();
-						printArray();
-						updateGameBoardWithDecision();
-
+						thinker.stopThread();
+						makeDecisionAndSend();
 					}
-				}
-				break;
+					break;
+
+				case GameMessage.GAME_ACTION_MOVE:
+					if (gamegui != null) {
+						gamegui.updateGameState(msgDetails);
+					}
+
+					List<Integer> qc = (List<Integer>) msgDetails.get(AmazonsGameMessage.QUEEN_POS_CURR);
+					List<Integer> qn = (List<Integer>) msgDetails.get(AmazonsGameMessage.QUEEN_POS_NEXT);
+					List<Integer> ar = (List<Integer>) msgDetails.get(AmazonsGameMessage.ARROW_POS);
+					if (!pythonMcts.isOpponentMoveValid(qc, qn, ar)) {
+						System.err.println("Invalid opponent move");
+					} else {
+						RolloutThread thinker2 = new RolloutThread();
+						thinker2.start();
+						try {
+							Thread.sleep(27000);
+						} catch (InterruptedException e) {
+							Thread.currentThread().interrupt();
+						}
+						thinker2.stopThread();
+						makeDecisionAndSend();
+					}
+					break;
+			
 
 			case AmazonsGameMessage.GAME_STATE_PLAYER_LOST:
 				System.out.println("Our AI has won!");
@@ -241,35 +224,15 @@ public class COSC322GamePlayer extends GamePlayer {
 		rolloutThread.stopThread();
 		System.out.println("AI has finished thinking");
 	}
+	
+	private void makeDecisionAndSend() {
+	List<List<Integer>> mv = pythonMcts.makeMove();
+	ArrayList<Integer> qcArr = new ArrayList<>(mv.get(0));
+	ArrayList<Integer> qnArr = new ArrayList<>(mv.get(1));
+	ArrayList<Integer> arArr = new ArrayList<>(mv.get(2));
 
-	public void makeADecision() {
-		MCTS_Manager.makeMove();
-		System.out.println("AI has made a decision");
-	}
-
-	public void updateGameBoardWithDecision() {
-		ArrayList<Integer> queenCurrent = new ArrayList<Integer>();
-		ArrayList<Integer> queenNew = new ArrayList<Integer>();
-		ArrayList<Integer> arrowPos = new ArrayList<Integer>();
-
-
-		queenCurrent.add(9 - MCTS_Manager.getNode().getQueenCurrent()[0] + 1);
-		queenCurrent.add(MCTS_Manager.getNode().getQueenCurrent()[1] + 1);
-
-		queenNew.add(9 - MCTS_Manager.getNode().getQueenNew()[0] + 1);
-		queenNew.add(MCTS_Manager.getNode().getQueenNew()[1] + 1);
-
-		arrowPos.add(9 - MCTS_Manager.getNode().getArrowPosition()[0] + 1);
-		arrowPos.add(MCTS_Manager.getNode().getArrowPosition()[1] + 1);
-
-
-		this.gamegui.updateGameState(queenCurrent, queenNew, arrowPos);
-		this.getGameClient().sendMoveMessage(queenCurrent, queenNew, arrowPos);
-		System.out.println("Game board has been updated with AI's decision");
-	}
-
-	public boolean isOpponentMoveValid(Map<String, Object> msgDetails) {
-		return MCTS_Manager.isOpponentMoveValid(msgDetails);
+	gamegui.updateGameState(qcArr, qnArr, arArr);
+	gameClient.sendMoveMessage(qcArr, qnArr, arArr);
 	}
 
 	public void printArray()
@@ -283,20 +246,15 @@ public class COSC322GamePlayer extends GamePlayer {
 		}
 	}
 
-	class RolloutThread extends Thread{
-		boolean running = true;
+	class RolloutThread extends Thread {
+		private volatile boolean running = true;
 		public void run() {
-			try {
-				while(running)
-					MCTS_Manager.doRollout();
-			} catch (InterruptedException e) {
-				throw new RuntimeException(e);
+			while (running) {
+				pythonMcts.doRollout();
 			}
 		}
-
-		public void stopThread()
-		{
+		public void stopThread() {
 			running = false;
 		}
-	}
+	}	
 }

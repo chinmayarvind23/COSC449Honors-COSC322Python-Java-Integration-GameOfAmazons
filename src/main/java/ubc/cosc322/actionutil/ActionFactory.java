@@ -1,8 +1,6 @@
 package ubc.cosc322.actionutil;
 
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.PriorityQueue;
 
 public class ActionFactory {
 
@@ -234,6 +232,7 @@ public class ActionFactory {
 
 
     }
+    @SuppressWarnings("unused")
     private void addAction(int[] queensPositionCurrent,int[] queensPositionNew,int[] arrowsPosition){
         //can flip 0 and 1 incase x and y are different in the servers cordinate system
 

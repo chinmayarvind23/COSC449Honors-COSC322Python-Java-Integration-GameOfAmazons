@@ -1,7 +1,5 @@
 package ubc.cosc322.actionutil;
 
-import java.util.ArrayList;
-
 public class Action {
     private int[] queenPositionCurrent= new int[2];
     private int[] queenPositionNew= new int[2];

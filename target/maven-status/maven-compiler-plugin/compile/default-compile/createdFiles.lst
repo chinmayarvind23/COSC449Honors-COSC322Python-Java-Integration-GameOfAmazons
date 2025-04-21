@@ -1,2 +1,13 @@
-ubc/cosc322/COSC322Test$1.class
-ubc/cosc322/COSC322Test.class
+ubc/cosc322/actionutil/Action.class
+ubc/cosc322/run/COSC322GamePlayer.class
+ubc/cosc322/run/COSC322GamePlayer$RolloutThread.class
+ubc/cosc322/run/COSC322GamePlayer$PythonMcts.class
+ubc/cosc322/actionutil/ActionFactory.class
+ubc/cosc322/mcts/MCTS_Manager.class
+ubc/cosc322/mcts/MCTS_Thread.class
+ubc/cosc322/mcts/NodeChildrenGenerator.class
+ubc/cosc322/test/test.class
+ubc/cosc322/mcts/Node.class
+ubc/cosc322/run/COSC322GamePlayer$1.class
+ubc/cosc322/mcts/OpponentActionValidator.class
+ubc/cosc322/mcts/RolloutManager.class

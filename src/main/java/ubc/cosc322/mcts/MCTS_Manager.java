@@ -14,7 +14,8 @@ public class MCTS_Manager {
    private static Node childNodeWithHighestUCB1Score;
    private static MCTS_Thread[] threads;
    private static int numThreads = 1;
-   private static int terminal;
+   @SuppressWarnings("unused")
+    private static int terminal;
 
    public static void setCurrentNode(Node node)
    {
@@ -116,6 +117,7 @@ public class MCTS_Manager {
                     nodesWithHighestUCB1Value = getNodesWithHighestUCB1Value();
        }
 
+       @SuppressWarnings("unused")
        int size = nodesWithHighestUCB1Value.size();
        for (Node childNode : nodesWithHighestUCB1Value) {
            node.getChildren().add(childNode);

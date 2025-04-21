@@ -1,7 +1,6 @@
 package ubc.cosc322.mcts;
 
 import ubc.cosc322.actionutil.Action;
-import ubc.cosc322.actionutil.ActionFactory;
 import ygraph.ai.smartfox.games.amazons.AmazonsGameMessage;
 
 import java.util.ArrayList;
@@ -28,6 +27,7 @@ final class OpponentActionValidator {
         return false;
     }
 
+    @SuppressWarnings("unchecked")
     private static void getOpponentMove(Map<String, Object> msgDetails) {
         opponentOriginalQueenPosition = (ArrayList<Integer>) msgDetails.get(AmazonsGameMessage.QUEEN_POS_CURR);
         opponentNewQueenPosition = (ArrayList<Integer>) msgDetails.get(AmazonsGameMessage.QUEEN_POS_NEXT);

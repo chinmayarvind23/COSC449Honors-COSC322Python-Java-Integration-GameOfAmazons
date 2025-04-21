@@ -1,10 +1,6 @@
 package ubc.cosc322.test;
-import ubc.cosc322.actionutil.ActionFactory;
-import ubc.cosc322.actionutil.Action;
 import ubc.cosc322.mcts.MCTS_Manager;
 import ubc.cosc322.mcts.Node;
-
-import java.util.ArrayList;
 
 
 public class test {

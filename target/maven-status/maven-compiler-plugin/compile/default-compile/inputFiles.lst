@@ -1,1 +1,10 @@
-/Users/aravind/Desktop/Personal/UBC Material/COSC 322/GameOfAmazons_Team13/src/main/java/ubc/cosc322/COSC322Test.java
+/Users/chinmayarvind/Documents/UBC/UBC Coursework/COSC 449/Reinforcement-Learning-Puddle-World-and-Python-Java-Integration/code/GameOfAmazons_Team13/src/main/java/ubc/cosc322/actionutil/Action.java
+/Users/chinmayarvind/Documents/UBC/UBC Coursework/COSC 449/Reinforcement-Learning-Puddle-World-and-Python-Java-Integration/code/GameOfAmazons_Team13/src/main/java/ubc/cosc322/actionutil/ActionFactory.java
+/Users/chinmayarvind/Documents/UBC/UBC Coursework/COSC 449/Reinforcement-Learning-Puddle-World-and-Python-Java-Integration/code/GameOfAmazons_Team13/src/main/java/ubc/cosc322/mcts/MCTS_Manager.java
+/Users/chinmayarvind/Documents/UBC/UBC Coursework/COSC 449/Reinforcement-Learning-Puddle-World-and-Python-Java-Integration/code/GameOfAmazons_Team13/src/main/java/ubc/cosc322/mcts/MCTS_Thread.java
+/Users/chinmayarvind/Documents/UBC/UBC Coursework/COSC 449/Reinforcement-Learning-Puddle-World-and-Python-Java-Integration/code/GameOfAmazons_Team13/src/main/java/ubc/cosc322/mcts/Node.java
+/Users/chinmayarvind/Documents/UBC/UBC Coursework/COSC 449/Reinforcement-Learning-Puddle-World-and-Python-Java-Integration/code/GameOfAmazons_Team13/src/main/java/ubc/cosc322/mcts/NodeChildrenGenerator.java
+/Users/chinmayarvind/Documents/UBC/UBC Coursework/COSC 449/Reinforcement-Learning-Puddle-World-and-Python-Java-Integration/code/GameOfAmazons_Team13/src/main/java/ubc/cosc322/mcts/OpponentActionValidator.java
+/Users/chinmayarvind/Documents/UBC/UBC Coursework/COSC 449/Reinforcement-Learning-Puddle-World-and-Python-Java-Integration/code/GameOfAmazons_Team13/src/main/java/ubc/cosc322/mcts/RolloutManager.java
+/Users/chinmayarvind/Documents/UBC/UBC Coursework/COSC 449/Reinforcement-Learning-Puddle-World-and-Python-Java-Integration/code/GameOfAmazons_Team13/src/main/java/ubc/cosc322/run/COSC322GamePlayer.java
+/Users/chinmayarvind/Documents/UBC/UBC Coursework/COSC 449/Reinforcement-Learning-Puddle-World-and-Python-Java-Integration/code/GameOfAmazons_Team13/src/main/java/ubc/cosc322/test/test.java
