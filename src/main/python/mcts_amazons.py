@@ -4,65 +4,65 @@ from py4j.clientserver import ClientServer, JavaParameters, PythonParameters
 
 # queen current pos, queen new pos, shot arrow pos
 class Action:
-    def __init__(self, qc, qn, ar, id_):
-        self.qc, self.qn, self.ar, self.id = qc, qn, ar, id_
-    def getQueenPositionCurrent(self): return self.qc
-    def getQueenPositionNew(self):     return self.qn
-    def getArrowPosition(self):        return self.ar
+    def __init__(self, queen_curr, queen_new, arrow_shot, id_):
+        self.queen_curr, self.queen_new, self.arrow_shot, self.id = queen_curr, queen_new, arrow_shot, id_
+    def getQueenPositionCurrent(self): return self.queen_curr
+    def getQueenPositionNew(self):     return self.queen_new
+    def getArrowPosition(self):        return self.arrow_shot
     def getId(self):                   return self.id
 
 # Getting possible actions
 class ActionFactory:
-    DIRS = [(1,0),(1,1),(1,-1),(-1,0),(-1,1),(-1,-1),(0,-1),(0,1)]
+    directions = [(1,0),(1,1),(1,-1),(-1,0),(-1,1),(-1,-1),(0,-1),(0,1)]
     def __init__(self, state, player):
         self.state = [row[:] for row in state]
         self.player = player
         self._next_id = 0
 
     def get_actions(self):
-        acts = []
+        actions = []
         for x in range(10):
             for y in range(10):
                 if self.state[x][y] == self.player:
-                    acts.extend(self._queen_moves(x,y))
-        return acts
+                    actions.extend(self._queen_moves(x,y))
+        return actions
 
     def _queen_moves(self, x, y):
-        res = []
-        for dx,dy in ActionFactory.DIRS:
+        queen_moves = []
+        for diff_x,diff_y in ActionFactory.directions:
             step = 1
             while True:
-                nx,ny = x+dx*step, y+dy*step
-                if not (0 <= nx < 10 and 0 <= ny < 10 and self.state[nx][ny]==0):
+                new_x,new_y = x+diff_x*step, y+diff_y*step
+                if not (0 <= new_x < 10 and 0 <= new_y < 10 and self.state[new_x][new_y]==0):
                     break
-                res += self._arrow_shots([x,y],[nx,ny])
+                queen_moves += self._arrow_shots([x,y],[new_x,new_y])
                 step += 1
-        return res
+        return queen_moves
 
-    def _arrow_shots(self, qc, qn):
-        sc = [row[:] for row in self.state]
-        sc[qc[0]][qc[1]] = 0
-        sc[qn[0]][qn[1]] = self.player
+    def _arrow_shots(self, queen_curr, queen_new):
+        board_state = [row[:] for row in self.state]
+        board_state[queen_curr[0]][queen_curr[1]] = 0
+        board_state[queen_new[0]][queen_new[1]] = self.player
         shots = []
-        for dx,dy in ActionFactory.DIRS:
+        for diff_x,diff_y in ActionFactory.directions:
             step = 1
             while True:
-                ax,ay = qn[0]+dx*step, qn[1]+dy*step
-                if not (0 <= ax < 10 and 0 <= ay < 10 and sc[ax][ay]==0):
+                arrow_x,arrow_y = queen_new[0]+diff_x*step, queen_new[1]+diff_y*step
+                if not (0 <= arrow_x < 10 and 0 <= arrow_y < 10 and board_state[arrow_x][arrow_y]==0):
                     break
                 self._next_id += 1
-                shots.append(Action(qc,qn,[ax,ay],self._next_id))
+                shots.append(Action(queen_curr,queen_new,[arrow_x,arrow_y],self._next_id))
                 step += 1
         return shots
 
 # State in MCTS
 class Node:
-    def __init__(self, st, playerType, qc, qn, ar, id_):
+    def __init__(self, st, playerType, queen_curr, queen_new, arrow_shot, id_):
         self.state       = [row[:] for row in st]
         self.playerType  = playerType
-        self.queenCurrent= qc
-        self.queenNew    = qn
-        self.arrow       = ar
+        self.queenCurrent= queen_curr
+        self.queenNew    = queen_new
+        self.arrow       = arrow_shot
         self.id          = id_
         self.rollouts    = 1
         self.totalWins   = 0
@@ -82,32 +82,32 @@ class NodeChildrenGenerator:
     @staticmethod
     def generate(node):
         node.children.clear()
-        acts = ActionFactory(node.state, node.playerType).get_actions()
-        valid_ids = {a.getId() for a in acts}
+        actions = ActionFactory(node.state, node.playerType).get_actions()
+        valid_action_ids = {a.getId() for a in actions}
         node.currentChildren = {
-            id_: child
-            for id_, child in node.currentChildren.items()
-            if id_ in valid_ids
+            id_: child_node
+            for id_, child_node in node.currentChildren.items()
+            if id_ in valid_action_ids
         }
         if node.terminal == -1:
-            if not acts:
+            if not actions:
                 node.terminal = 2 if node.playerType==1 else 1
             else:
                 node.terminal = 0
         if node.terminal!=0:
             return
-        for a in acts:
+        for a in actions:
             if a.getId() in node.currentChildren:
-                child = node.currentChildren[a.getId()]
+                child_node = node.currentChildren[a.getId()]
             else:
-                st = [r[:] for r in node.state]
-                oc, on, ar = a.getQueenPositionCurrent(), a.getQueenPositionNew(), a.getArrowPosition()
-                st[oc[0]][oc[1]] = 0
-                st[on[0]][on[1]] = node.playerType
-                st[ar[0]][ar[1]] = 7
-                child = Node(st, 2 if node.playerType==1 else 1, oc, on, ar, a.getId())
-                node.currentChildren[a.getId()] = child
-            node.children.append(child)
+                board_state = [r[:] for r in node.state]
+                q_curr, q_new, arrow_shot = a.getQueenPositionCurrent(), a.getQueenPositionNew(), a.getArrowPosition()
+                board_state[q_curr[0]][q_curr[1]] = 0
+                board_state[q_new[0]][q_new[1]] = node.playerType
+                board_state[arrow_shot[0]][arrow_shot[1]] = 7
+                child_node = Node(board_state, 2 if node.playerType==1 else 1, q_curr, q_new, arrow_shot, a.getId())
+                node.currentChildren[a.getId()] = child_node
+            node.children.append(child_node)
 
 # Picks a node to rollout
 class RolloutManager:
@@ -117,20 +117,20 @@ class RolloutManager:
         if node.terminal!=0:
             return node.terminal
         node.rollouts += 1
-        acts = ActionFactory(node.state, node.playerType).get_actions()
-        choice = random.choice(acts)
-        cid = choice.getId()
-        if cid in node.currentChildren:
-            nxt = node.currentChildren[cid]
+        actions = ActionFactory(node.state, node.playerType).get_actions()
+        action_chosen = random.choice(actions)
+        chosen_action_id = action_chosen.getId()
+        if chosen_action_id in node.currentChildren:
+            recursor_child_node = node.currentChildren[chosen_action_id]
         else:
-            st = [r[:] for r in node.state]
-            oc,on,ar = choice.getQueenPositionCurrent(), choice.getQueenPositionNew(), choice.getArrowPosition()
-            st[oc[0]][oc[1]] = 0
-            st[on[0]][on[1]] = node.playerType
-            st[ar[0]][ar[1]] = 7
-            nxt = Node(st, 2 if node.playerType==1 else 1, oc,on,ar, cid)
-            node.currentChildren[cid] = nxt
-        winner = RolloutManager.rollout(nxt, node.rollouts)
+            board_state = [r[:] for r in node.state]
+            q_curr, q_new, arrow_shot = action_chosen.getQueenPositionCurrent(), action_chosen.getQueenPositionNew(), action_chosen.getArrowPosition()
+            board_state[q_curr[0]][q_curr[1]] = 0
+            board_state[q_new[0]][q_new[1]] = node.playerType
+            board_state[arrow_shot[0]][arrow_shot[1]] = 7
+            recursor_child_node = Node(board_state, 2 if node.playerType==1 else 1, q_curr,q_new,arrow_shot, chosen_action_id)
+            node.currentChildren[chosen_action_id] = recursor_child_node
+        winner = RolloutManager.rollout(recursor_child_node, node.rollouts)
         if winner == node.playerType:
             node.totalWins += 1
         else:
@@ -141,27 +141,27 @@ class RolloutManager:
 # Factor in opponent move
 class OpponentValidator:
     @staticmethod
-    def validate(node, qc, qn, ar):
-        def transform(pos):
+    def validate(node, queen_curr, queen_new, arrow_shot):
+        def map(pos):
             return [10 - pos[0], pos[1] - 1]
 
-        qc_t = transform(qc)
-        qn_t = transform(qn)
-        ar_t = transform(ar)
-        acts = ActionFactory(node.state, node.playerType).get_actions()
-        for a in acts:
-            if (a.getQueenPositionCurrent() == qc_t
-                and a.getQueenPositionNew()     == qn_t
-                and a.getArrowPosition()        == ar_t):
+        queen_curr_mapped = map(queen_curr)
+        queen_new_mapped = map(queen_new)
+        arrowshot_mapped = map(arrow_shot)
+        actions = ActionFactory(node.state, node.playerType).get_actions()
+        for a in actions:
+            if (a.getQueenPositionCurrent() == queen_curr_mapped
+                and a.getQueenPositionNew()     == queen_new_mapped
+                and a.getArrowPosition()        == arrowshot_mapped):
                 if a.getId() in node.currentChildren:
                     node.__dict__.update(node.currentChildren[a.getId()].__dict__)
                 else:
-                    st = [r[:] for r in node.state]
-                    st[qc_t[0]][qc_t[1]] = 0
-                    st[qn_t[0]][qn_t[1]] = node.playerType
-                    st[ar_t[0]][ar_t[1]] = 7
-                    child = Node(st, 2 if node.playerType==1 else 1, qc_t, qn_t, ar_t, a.getId())
-                    node.__dict__.update(child.__dict__)
+                    board_state = [r[:] for r in node.state]
+                    board_state[queen_curr_mapped[0]][queen_curr_mapped[1]] = 0
+                    board_state[queen_new_mapped[0]][queen_new_mapped[1]] = node.playerType
+                    board_state[arrowshot_mapped[0]][arrowshot_mapped[1]] = 7
+                    child_node = Node(board_state, 2 if node.playerType==1 else 1, queen_curr_mapped, queen_new_mapped, arrowshot_mapped, a.getId())
+                    node.__dict__.update(child_node.__dict__)
                 NodeChildrenGenerator.generate(node)
                 return True
         return False
@@ -175,10 +175,10 @@ class MCTSBridge:
         self.gateway = None
 
     def setCurrentNode(self, boardState, playerId):
-        py_state = []
+        python_board_state = []
         for java_row in boardState:
-            py_state.append([int(cell) for cell in java_row])
-        self.root = Node(py_state, playerId, None, None, None, 0)
+            python_board_state.append([int(cell) for cell in java_row])
+        self.root = Node(python_board_state, playerId, None, None, None, 0)
         NodeChildrenGenerator.generate(self.root)
 
     def setThreads(self, n):
@@ -193,32 +193,32 @@ class MCTSBridge:
             self.doRollout()
             NodeChildrenGenerator.generate(self.root)
         if not self.root.children:
-            jouter = self.gateway.jvm.java.util.ArrayList()
+            move_list = self.gateway.jvm.java.util.ArrayList()
             for _ in range(3):
-                jouter.add(self.gateway.jvm.java.util.ArrayList())
-            return jouter
-        best = max(self.root.children, key=lambda c: c.ucb1Score)
-        self.root = best
-        jouter = self.gateway.jvm.java.util.ArrayList()
-        for (r, c) in (best.queenCurrent, best.queenNew, best.arrow):
-            sf_r = 10 - r
-            sf_c = c + 1
-            jinner = self.gateway.jvm.java.util.ArrayList()
-            jinner.add(int(sf_r))
-            jinner.add(int(sf_c))
-            jouter.add(jinner)
-        return jouter
+                move_list.add(self.gateway.jvm.java.util.ArrayList())
+            return move_list
+        highest_ucb1score_node = max(self.root.children, key=lambda c: c.ucb1Score)
+        self.root = highest_ucb1score_node
+        move_list = self.gateway.jvm.java.util.ArrayList()
+        for (row, column) in (highest_ucb1score_node.queenCurrent, highest_ucb1score_node.queenNew, highest_ucb1score_node.arrow):
+            row_mapped = 10 - row
+            column_mapped = column + 1
+            mapped_coords = self.gateway.jvm.java.util.ArrayList()
+            mapped_coords.add(int(row_mapped))
+            mapped_coords.add(int(column_mapped))
+            move_list.add(mapped_coords)
+        return move_list
 
-    def isOpponentMoveValid(self, qc, qn, ar):
-        return OpponentValidator.validate(self.root, qc, qn, ar)
+    def isOpponentMoveValid(self, queen_curr, queen_new, arrow_shot):
+        return OpponentValidator.validate(self.root, queen_curr, queen_new, arrow_shot)
 
 # Creating Py4J gateway for Java to connect 
 if __name__ == "__main__":
-    entry = MCTSBridge()
+    gateway_entry_point = MCTSBridge()
     server = ClientServer(
         java_parameters   = JavaParameters(),
         python_parameters = PythonParameters(),
-        python_server_entry_point = entry
+        python_server_entry_point = gateway_entry_point
     )
-    entry.gateway = server
+    gateway_entry_point.gateway = server
     print("Python bridge used")
