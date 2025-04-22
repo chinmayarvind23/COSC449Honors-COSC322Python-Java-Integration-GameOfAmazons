@@ -12,6 +12,7 @@ import ygraph.ai.smartfox.games.GamePlayer;
 import ygraph.ai.smartfox.games.amazons.AmazonsGameMessage;
 
 public class COSC322GamePlayer extends GamePlayer {
+	// Gets methods from Python code
     private interface PythonMcts {
         void setCurrentNode(int[][] boardState, int playerId);
         void setThreads(int n);
@@ -76,12 +77,15 @@ public class COSC322GamePlayer extends GamePlayer {
 		this.gamegui = new BaseGameGUI(this);
 	}
 
+	// Login to SFS, spin up connection to Py4J gateway
 	@Override
-    public void connect() {
-        gameClient = new GameClient(userName, passwd, this);
-        pyServer = new ClientServer((Object) null);
-		pythonMcts = (PythonMcts) pyServer.getPythonServerEntryPoint(new Class[]{PythonMcts.class});
-    }
+	public void connect() {
+		gameClient = new GameClient(userName, passwd, this);
+		pyServer = new ClientServer((Object) null);
+		pythonMcts = (PythonMcts) pyServer
+			.getPythonServerEntryPoint(new Class[]{ PythonMcts.class });
+		System.out.println("Connected to Python MCTS bridge? " + (pythonMcts != null));
+	}
 
 	@Override
 	public GameClient getGameClient() {
@@ -111,6 +115,7 @@ public class COSC322GamePlayer extends GamePlayer {
 
 			    case GameMessage.GAME_ACTION_START:
 					setMyQueen((String) msgDetails.get(AmazonsGameMessage.PLAYER_BLACK));
+					// Calling python code
 					pythonMcts.setCurrentNode(board, myQueen);
 					pythonMcts.setThreads(4);
 
@@ -118,7 +123,7 @@ public class COSC322GamePlayer extends GamePlayer {
 						RolloutThread thinker = new RolloutThread();
 						thinker.start();
 						try {
-							Thread.sleep(27000);
+							Thread.sleep(15000);
 						} catch (InterruptedException e) {
 							Thread.currentThread().interrupt();
 						}
@@ -141,7 +146,7 @@ public class COSC322GamePlayer extends GamePlayer {
 						RolloutThread thinker2 = new RolloutThread();
 						thinker2.start();
 						try {
-							Thread.sleep(27000);
+							Thread.sleep(15000);
 						} catch (InterruptedException e) {
 							Thread.currentThread().interrupt();
 						}
@@ -220,13 +225,22 @@ public class COSC322GamePlayer extends GamePlayer {
 	public void performRolloutsOnCurrentNodeFor30Seconds() throws InterruptedException {
 		RolloutThread rolloutThread = new RolloutThread();
 		rolloutThread.start();
-		Thread.sleep(27000);
+		Thread.sleep(15000);
 		rolloutThread.stopThread();
 		System.out.println("AI has finished thinking");
 	}
 	
+	// makes decision from python code
 	private void makeDecisionAndSend() {
 	List<List<Integer>> mv = pythonMcts.makeMove();
+	if (mv == null || mv.size() < 3 || mv.get(0).size() < 2 || mv.get(1).size() < 2 || mv.get(2).size() < 2) {
+        System.out.println("No legal moves left — ending game.");
+        gameClient.leaveCurrentRoom();
+        gameClient.logout();
+        pyServer.shutdown();
+        return;
+    }
+	// queen current pos, queen new pos, shot arrow pos
 	ArrayList<Integer> qcArr = new ArrayList<>(mv.get(0));
 	ArrayList<Integer> qnArr = new ArrayList<>(mv.get(1));
 	ArrayList<Integer> arArr = new ArrayList<>(mv.get(2));

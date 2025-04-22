@@ -1,6 +1,8 @@
+# pip install py4j and run this file first and then run COSC322GamePlayer.java and run another instance of COSC322GamePlayer.java that have both joined the same game room
 import math, random, threading
 from py4j.clientserver import ClientServer, JavaParameters, PythonParameters
 
+# queen current pos, queen new pos, shot arrow pos
 class Action:
     def __init__(self, qc, qn, ar, id_):
         self.qc, self.qn, self.ar, self.id = qc, qn, ar, id_
@@ -9,6 +11,7 @@ class Action:
     def getArrowPosition(self):        return self.ar
     def getId(self):                   return self.id
 
+# Getting possible actions
 class ActionFactory:
     DIRS = [(1,0),(1,1),(1,-1),(-1,0),(-1,1),(-1,-1),(0,-1),(0,1)]
     def __init__(self, state, player):
@@ -52,6 +55,7 @@ class ActionFactory:
                 step += 1
         return shots
 
+# State in MCTS
 class Node:
     def __init__(self, st, playerType, qc, qn, ar, id_):
         self.state       = [row[:] for row in st]
@@ -73,10 +77,18 @@ class Node:
         c = math.sqrt(2)
         self.ucb1Score = self.avg_win() + c*math.sqrt(math.log(parentRollouts)/self.rollouts) - self.punishment
 
+# Prunes MCTS tree
 class NodeChildrenGenerator:
     @staticmethod
     def generate(node):
+        node.children.clear()
         acts = ActionFactory(node.state, node.playerType).get_actions()
+        valid_ids = {a.getId() for a in acts}
+        node.currentChildren = {
+            id_: child
+            for id_, child in node.currentChildren.items()
+            if id_ in valid_ids
+        }
         if node.terminal == -1:
             if not acts:
                 node.terminal = 2 if node.playerType==1 else 1
@@ -97,6 +109,7 @@ class NodeChildrenGenerator:
                 node.currentChildren[a.getId()] = child
             node.children.append(child)
 
+# Picks a node to rollout
 class RolloutManager:
     @staticmethod
     def rollout(node, parentRollouts):
@@ -125,34 +138,48 @@ class RolloutManager:
         node.update_ucb1(parentRollouts)
         return winner
 
+# Factor in opponent move
 class OpponentValidator:
     @staticmethod
     def validate(node, qc, qn, ar):
+        def transform(pos):
+            return [10 - pos[0], pos[1] - 1]
+
+        qc_t = transform(qc)
+        qn_t = transform(qn)
+        ar_t = transform(ar)
         acts = ActionFactory(node.state, node.playerType).get_actions()
         for a in acts:
-            if (a.getQueenPositionCurrent()==qc and
-                a.getQueenPositionNew()==qn and
-                a.getArrowPosition()==ar):
-                cid = a.getId()
-                if cid in node.currentChildren:
-                    node.__dict__.update(node.currentChildren[cid].__dict__)
+            if (a.getQueenPositionCurrent() == qc_t
+                and a.getQueenPositionNew()     == qn_t
+                and a.getArrowPosition()        == ar_t):
+                if a.getId() in node.currentChildren:
+                    node.__dict__.update(node.currentChildren[a.getId()].__dict__)
                 else:
                     st = [r[:] for r in node.state]
-                    st[qc[0]][qc[1]] = 0
-                    st[qn[0]][qn[1]] = node.playerType
-                    st[ar[0]][ar[1]] = 7
-                    child = Node(st, 2 if node.playerType==1 else 1, qc,qn,ar,cid)
+                    st[qc_t[0]][qc_t[1]] = 0
+                    st[qn_t[0]][qn_t[1]] = node.playerType
+                    st[ar_t[0]][ar_t[1]] = 7
+                    child = Node(st, 2 if node.playerType==1 else 1, qc_t, qn_t, ar_t, a.getId())
                     node.__dict__.update(child.__dict__)
+                NodeChildrenGenerator.generate(node)
                 return True
         return False
 
+
+# Creating methods that Java can call and access through Py4J gateway created in COSC322GamePlayer.java file
 class MCTSBridge:
     def __init__(self):
         self.root = None
         self.numThreads = 1
+        self.gateway = None
 
     def setCurrentNode(self, boardState, playerId):
-        self.root = Node(boardState, playerId, None, None, None, 0)
+        py_state = []
+        for java_row in boardState:
+            py_state.append([int(cell) for cell in java_row])
+        self.root = Node(py_state, playerId, None, None, None, 0)
+        NodeChildrenGenerator.generate(self.root)
 
     def setThreads(self, n):
         self.numThreads = n
@@ -162,13 +189,30 @@ class MCTSBridge:
             RolloutManager.rollout(self.root, self.root.rollouts)
 
     def makeMove(self):
+        if not self.root.children:
+            self.doRollout()
+            NodeChildrenGenerator.generate(self.root)
+        if not self.root.children:
+            jouter = self.gateway.jvm.java.util.ArrayList()
+            for _ in range(3):
+                jouter.add(self.gateway.jvm.java.util.ArrayList())
+            return jouter
         best = max(self.root.children, key=lambda c: c.ucb1Score)
         self.root = best
-        return [best.queenCurrent, best.queenNew, best.arrow]
+        jouter = self.gateway.jvm.java.util.ArrayList()
+        for (r, c) in (best.queenCurrent, best.queenNew, best.arrow):
+            sf_r = 10 - r
+            sf_c = c + 1
+            jinner = self.gateway.jvm.java.util.ArrayList()
+            jinner.add(int(sf_r))
+            jinner.add(int(sf_c))
+            jouter.add(jinner)
+        return jouter
 
     def isOpponentMoveValid(self, qc, qn, ar):
         return OpponentValidator.validate(self.root, qc, qn, ar)
 
+# Creating Py4J gateway for Java to connect 
 if __name__ == "__main__":
     entry = MCTSBridge()
     server = ClientServer(
@@ -176,4 +220,5 @@ if __name__ == "__main__":
         python_parameters = PythonParameters(),
         python_server_entry_point = entry
     )
+    entry.gateway = server
     print("Python bridge used")
