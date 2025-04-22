@@ -74,8 +74,7 @@ class Node:
 
     def avg_win(self): return self.totalWins/self.rollouts
     def update_ucb1(self, parentRollouts):
-        c = math.sqrt(2)
-        self.ucb1Score = self.avg_win() + c*math.sqrt(math.log(parentRollouts)/self.rollouts) - self.punishment
+        self.ucb1Score = self.avg_win() + math.sqrt(2)*math.sqrt(math.log(parentRollouts)/self.rollouts) - self.punishment
 
 # Prunes MCTS tree
 class NodeChildrenGenerator:
