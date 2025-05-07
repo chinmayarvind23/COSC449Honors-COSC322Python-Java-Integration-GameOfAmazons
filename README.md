@@ -1,8 +1,7 @@
-# Game of Amazons - Team 13
+# Game of Amazons (Team 13) - Modified for Python-Java Integration
 
-## Team Members:
-- Shaheer Shoaib
-- Chinmay Arvind
-- Mete Cil
-- Satanshu Mishra
-- Anitej Isaac Sharma
+The Game of Amazons is a dual player game where players have to move their set of pawns to restrict the other player’s pawns from being able to move with the use of arrows that can be shot to block an opponent’s path. An extension of the game-based learning approach to benefit undergraduate students would be to allow them to gain practical experience by building parts of a reinforcement learning agent that learns to navigate a puddle world and parts of an AI agent that plays the Game of Amazons to help them gain a deeper understanding of the underlying learning algorithms and when to apply them effectively.
+
+The Python-Java code integration is separate from PNRL’s architecture. It is built for allowing students to be able to program in a language that is more beginner-friendly, which is Python, and allows students to use its vast set of machine learning/reinforcement learning libraries to their advantage when programming the Game of Amazons project in UBC’s COSC 322 AI course. The project is a two-player game for which the client-side is built by students with AI algorithms to play and win the Game of Amazons. The client-side uses SmartFoxServer’s Java client API to communicate moves to the COSC 322 game server (written with SmartFoxServer Java server API). The architecture of this integration consists of Python code written with Py4J, a python library allowing Python code to access Java objects through a JVM gateway, and placed directly into the client-side of the Game of Amazons. The integration code will call the necessary machine learning/reinforcement learning libraries and perform the required computations to compute the best next move to be made. It will then communicate the move to be made in the game to the SmartFoxServer client API, which then communicates the move to make to the game server. A diagram with the data flow details of the integration with the COSC 322 UBC Game of Amazons client-server architecture is as follows:
+
+![CleanShot 2025-05-07 at 16 48 20@2x](https://github.com/user-attachments/assets/050223f7-7fef-4e4f-a088-9740d0778d8a)
